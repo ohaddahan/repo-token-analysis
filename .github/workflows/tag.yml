@@ -18,6 +18,16 @@ jobs:
           MAJOR=${PKG_VERSION%%.*}
           echo "version=${PKG_VERSION}" >> "$GITHUB_OUTPUT"
           echo "major=${MAJOR}" >> "$GITHUB_OUTPUT"
+      - name: Validate versions match
+        env:
+          PKG_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          ACTION_VERSION=$(grep -oP '(?<=:v)\S+' action.yml | tr -d "'\"")
+          if [[ "$ACTION_VERSION" != "$PKG_VERSION" ]]; then
+            echo "::error::Version mismatch: action.yml has v${ACTION_VERSION}, package.json has ${PKG_VERSION}"
+            echo "Run ./scripts/bump.sh to sync versions"
+            exit 1
+          fi
       - name: Push version tag
         run: |
           git tag "v${{ steps.version.outputs.version }}"
