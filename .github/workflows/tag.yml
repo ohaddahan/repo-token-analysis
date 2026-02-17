@@ -1,0 +1,31 @@
+name: Tag
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from package.json
+        id: version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          MAJOR=${PKG_VERSION%%.*}
+          echo "version=${PKG_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "major=${MAJOR}" >> "$GITHUB_OUTPUT"
+
+      - name: Push version tag
+        run: |
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Force-update floating major tag
+        run: |
+          git tag -f "v${{ steps.version.outputs.major }}" "v${{ steps.version.outputs.version }}"
+          git push -f origin "v${{ steps.version.outputs.major }}"

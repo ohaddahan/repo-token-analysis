@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["Create Release"]
+    types: [completed]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      major: ${{ steps.version.outputs.major }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from package.json
+        id: version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          MAJOR=${PKG_VERSION%%.*}
+          echo "version=${PKG_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "major=${MAJOR}" >> "$GITHUB_OUTPUT"
+
+  publish-docker:
+    runs-on: ubuntu-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm ci
+      - run: npm run build
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:v${{ needs.get-version.outputs.version }}
+            ghcr.io/${{ github.repository }}:v${{ needs.get-version.outputs.major }}
+
+  update-action-yml:
+    runs-on: ubuntu-latest
+    needs: [get-version, publish-docker]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update action.yml image reference
+        run: |
+          sed -i "s|image:.*|image: 'docker://ghcr.io/${{ github.repository }}:v${{ needs.get-version.outputs.version }}'|" action.yml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add action.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: update action.yml to v${{ needs.get-version.outputs.version }} [skip ci]"
+          git push
