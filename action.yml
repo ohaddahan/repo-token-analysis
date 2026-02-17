@@ -1,0 +1,25 @@
+name: 'Repo Token Analysis'
+description: 'Analyze repo token count against AI model context windows (Claude, GPT-4, Gemini). Generates badges, reports, and diagnostics.'
+author: 'ohaddahan'
+
+branding:
+  icon: 'bar-chart-2'
+  color: 'blue'
+
+inputs:
+  threshold_percent:
+    description: 'Fail CI if any model exceeds this % of context window'
+    required: false
+    default: '75'
+  top_n_offenders:
+    description: 'Number of largest files to report in diagnostics'
+    required: false
+    default: '10'
+  history_max_entries:
+    description: 'Max entries to keep in history.json'
+    required: false
+    default: '100'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
