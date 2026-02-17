@@ -1,6 +1,6 @@
 {
   "name": "repo-token-analysis",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GitHub Action that analyzes repo token count against AI model context windows",
   "type": "module",
   "main": "dist/main.js",
